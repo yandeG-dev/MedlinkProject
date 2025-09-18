@@ -12,13 +12,25 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+             $table->id();
+             $table->string('nom', 50);
+            $table->string('prenom', 50);
+            $table->string('email', 100)->unique();
+            $table->string('password', 255);
+            $table->enum('role', ['super_admin', 'admin_structure', 'assistant', 'medecin', 'patient']);
+            $table->boolean('actif')->default(1);
+            $table->unsignedBigInteger('createur_id')->nullable();
+            $table->unsignedBigInteger('structure_id')->nullable();
+            $table->string('specialite', 100)->nullable();
+            $table->integer('age')->nullable();
+            $table->string('adresse', 255)->nullable();
+            $table->string('telephone', 20)->nullable();
+        //     $table->foreign('createur_id')->references('id')->on('users')->nullOnDelete();
+        //  $table->foreign('structure_id')->references('id')->on('structures')->nullOnDelete();
             $table->timestamps();
+            $table->enum('groupe_sanguin', ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])->nullable();
+            $table->text('antecedants');
+            $table->string('allergies', 200);
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
