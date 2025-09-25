@@ -12,11 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('prescriptions', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->id();
+            $table->date('date_prescription');
             $table->text('contenu');
             $table->unsignedBigInteger('medecin_id');
             $table->unsignedBigInteger('patient_id');
             $table->unsignedBigInteger('structure_id');
+             $table->foreign('medecin_id')->references('id')->on('users')->onDelete('cascade');
+             $table->foreign('patient_id')->references('id')->on('users')->onDelete('cascade');
+             $table->foreign('structure_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

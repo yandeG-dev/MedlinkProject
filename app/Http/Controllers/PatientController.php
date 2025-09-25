@@ -25,11 +25,14 @@ class PatientController extends Controller
             'telephone' => 'nullable|string',
             'groupe_sanguin' => 'nullable|string',
             'allergies' => 'nullable|string',
+            'adresse' => 'nullable|string',
             'antecedants' => 'nullable|string',
+            'role' => 'nullable|string',
+            'age' => 'nullable|int',
         ]);
 
         $validated['password'] = bcrypt($validated['password']);
-        $validated['role'] = 'patient'; // 👈 rôle fixé automatiqueme
+        $validated['role'] = 'patient'; // rôle fixé automatiqueme
         $patient = User::create($validated);
 
         return response()->json($patient, 201);
@@ -60,4 +63,14 @@ class PatientController extends Controller
 
         return response()->json(['message' => 'Patient supprimé avec succès']);
     }
+public function showDossier($id)
+{
+    $patient = User::where('role', 'patient')
+        // ->with(['rendezVous', 'prescriptions'])
+        ->findOrFail($id);
+
+    return response()->json($patient);
+}
+
+    
 }

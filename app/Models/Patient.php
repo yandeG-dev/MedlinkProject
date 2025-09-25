@@ -16,7 +16,14 @@ class Patient extends Model
     'groupe_sanguin',
     'allergies',
      'antecedants',
-    'role',
+     'age',
+     'adresse',
+   
 ];
+public function rendezVous()
+{
+    return $this->hasMany(RendezVous::class, 'patient_id');
+}
+
 
 }

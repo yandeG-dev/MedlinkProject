@@ -25,8 +25,8 @@ return new class extends Migration
             $table->integer('age')->nullable();
             $table->string('adresse', 255)->nullable();
             $table->string('telephone', 20)->nullable();
-        //     $table->foreign('createur_id')->references('id')->on('users')->nullOnDelete();
-        //  $table->foreign('structure_id')->references('id')->on('structures')->nullOnDelete();
+             $table->foreign('createur_id')->references('id')->on('users')->nullOnDelete();
+        //    $table->foreign('structure_id')->references('id')->on('structures')->nullOnDelete();
             $table->timestamps();
             $table->enum('groupe_sanguin', ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])->nullable();
             $table->text('antecedants');
