@@ -264,6 +264,7 @@ class AssistantController extends Controller
             'telephone' => 'required|string|max:20',
             'antecedants' => 'nullable|string',
             'allergies' => 'nullable|string',
+            'groupe_sanguin' => 'nullable|string|max:10',
         ]);
 
         // Générer un mot de passe par défaut
@@ -281,6 +282,7 @@ class AssistantController extends Controller
             'antecedants' => $request->antecedants ?? '',
             'allergies' => $request->allergies ?? '',
             'createur_id' => auth()->id(),
+            'groupe_sanguin' => $request->groupe_sanguin ?? '',
             'structure_id' => auth()->user()->structure_id,
             'actif' => true,
         ]);
@@ -338,6 +340,7 @@ class AssistantController extends Controller
             'telephone' => 'required|string|max:20',
             'antecedants' => 'nullable|string',
             'allergies' => 'nullable|string',
+            'groupe_sanguin' => 'nullable|string|max:10',
         ]);
 
         $patient->update([
@@ -349,6 +352,7 @@ class AssistantController extends Controller
             'telephone' => $request->telephone,
             'antecedants' => $request->antecedants ?? '',
             'allergies' => $request->allergies ?? '',
+            'groupe_sanguin' => $request->groupe_sanguin ?? '',
         ]);
 
         return response()->json([

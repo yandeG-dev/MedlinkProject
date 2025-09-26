@@ -212,7 +212,7 @@ class MedecinController extends Controller
                 'traitement' => $request->traitement,
                 'notes' => $request->notes,
                 'prix' => $request->prix,
-                'statut' => $request->statut ?? 'planifie', // ou 'planifie' selon votre logique
+                'statut' => $request->statut ?? '', // ou 'planifie' selon votre logique
             ]);
 
             return response()->json([
