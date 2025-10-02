@@ -15,6 +15,7 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->enum('statut', ['planifie', 'annule', 'termine']);
             $table->unsignedBigInteger('patient_id');
+            $table->unsignedBigInteger('medecin_id');
             $table->unsignedBigInteger('assistant_id');
             $table->unsignedBigInteger('structure_id');
             $table->timestamps();

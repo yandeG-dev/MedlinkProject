@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class AdminStructureController extends Controller
 {
@@ -21,148 +22,153 @@ class AdminStructureController extends Controller
     /**
      * Tableau de bord complet avec toutes les données de la structure
      */
-    public function dashboardComplet(): JsonResponse
-    {
-        try {
-            // Vérification d'authentification et de rôle
-            if (!auth()->check()) {
-                return response()->json(['error' => 'Non authentifié'], 401);
-            }
+   public function dashboardComplet(): JsonResponse
+{
+    try {
+        // Vérification d'authentification et de rôle
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
 
-            if (!auth()->user()->isAdminStructure()) {
-                return response()->json(['error' => 'Accès non autorisé'], 403);
-            }
+        if (!auth()->user()->isAdminStructure()) {
+            return response()->json(['error' => 'Accès non autorisé'], 403);
+        }
 
-            $structureId = auth()->user()->structure_id;
+        $structureId = auth()->user()->structure_id;
 
-            // Vérifier que l'admin a une structure
-            if (!$structureId) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'stats' => [
-                            'total_utilisateurs' => 0,
-                            'assistants_total' => 0,
-                            'medecins_total' => 0,
-                            'patients_total' => 0,
-                            'utilisateurs_actifs' => 0,
-                            'utilisateurs_inactifs' => 0,
-                            'prescriptions_total' => 0,
-                            'consultations_total' => 0,
-                            'rdv_total' => 0,
-                            'rdv_planifies' => 0,
-                            'rdv_termines' => 0,
-                            'rdv_annules' => 0,
-                            'prescriptions_mois' => 0,
-                            'consultations_mois' => 0,
-                            'rdv_mois' => 0,
-                        ],
-                        'prescriptions_recentes' => [],
-                        'consultations_recentes' => [],
-                        'rdv_prochains' => [],
-                        'structure' => null
-                    ],
-                    'message' => 'Aucune structure associée'
-                ]);
-            }
-
-            // Statistiques complètes de la structure
-            $stats = [
-                // Utilisateurs
-                'total_utilisateurs' => User::where('structure_id', $structureId)->count(),
-                'assistants_total' => User::where('role', 'assistant')->where('structure_id', $structureId)->count(),
-                'medecins_total' => User::where('role', 'medecin')->where('structure_id', $structureId)->count(),
-                'patients_total' => User::where('role', 'patient')->where('structure_id', $structureId)->count(),
-                'utilisateurs_actifs' => User::where('structure_id', $structureId)->where('actif', true)->count(),
-                'utilisateurs_inactifs' => User::where('structure_id', $structureId)->where('actif', false)->count(),
-
-                // Activités - Utilisation sécurisée de whereHas
-                'prescriptions_total' => Prescription::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->count(),
-
-                'consultations_total' => Consultation::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->count(),
-
-                'rdv_total' => Rdv::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->count(),
-
-                'rdv_planifies' => Rdv::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->where('statut', 'planifié')->count(),
-
-                'rdv_termines' => Rdv::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->where('statut', 'terminé')->count(),
-
-                'rdv_annules' => Rdv::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->where('statut', 'annulé')->count(),
-
-                // Ce mois
-                'prescriptions_mois' => Prescription::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->whereMonth('created_at', now()->month)->count(),
-
-                'consultations_mois' => Consultation::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->whereMonth('created_at', now()->month)->count(),
-
-                'rdv_mois' => Rdv::whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })->whereMonth('created_at', now()->month)->count(),
-            ];
-
-            // Dernières activités
-            $prescriptions_recentes = Prescription::with(['medecin', 'patient'])
-                ->whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
-
-            $consultations_recentes = Consultation::with(['medecin', 'patient'])
-                ->whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })
-                ->orderBy('date_consultation', 'desc')
-                ->take(5)
-                ->get();
-
-            $rdv_prochains = Rdv::with(['medecin', 'patient'])
-                ->whereHas('medecin', function($query) use ($structureId) {
-                    $query->where('structure_id', $structureId);
-                })
-                ->where('statut', 'planifié')
-                ->where('date_rdv', '>=', now())
-                ->orderBy('date_rdv')
-                ->take(5)
-                ->get();
-
+        // Vérifier que l'admin a une structure
+        if (!$structureId) {
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'stats' => $stats,
-                    'prescriptions_recentes' => $prescriptions_recentes,
-                    'consultations_recentes' => $consultations_recentes,
-                    'rdv_prochains' => $rdv_prochains,
-                    'structure' => Structure::find($structureId)
+                    'stats' => [
+                        'total_utilisateurs' => 0,
+                        'assistants_total' => 0,
+                        'medecins_total' => 0,
+                        'patients_total' => 0,
+                        'utilisateurs_actifs' => 0,
+                        'utilisateurs_inactifs' => 0,
+                        'prescriptions_total' => 0,
+                        'consultations_total' => 0,
+                        'rdv_total' => 0,
+                        'rdv_planifies' => 0,
+                        'rdv_termines' => 0,
+                        'rdv_annules' => 0,
+                        'prescriptions_mois' => 0,
+                        'consultations_mois' => 0,
+                        'rdv_mois' => 0,
+                    ],
+                    'prescriptions_recentes' => [],
+                    'consultations_recentes' => [],
+                    'rdv_prochains' => [],
+                    'structure' => null
                 ],
-                'message' => 'Tableau de bord complet récupéré avec succès'
+                'message' => 'Aucune structure associée'
             ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération du tableau de bord',
-                'message' => $e->getMessage()
-            ], 500);
         }
+
+        // Statistiques complètes de la structure
+        $stats = [
+            'total_utilisateurs' => User::where('structure_id', $structureId)->count(),
+            'assistants_total' => User::where('role', 'assistant')->where('structure_id', $structureId)->count(),
+            'medecins_total' => User::where('role', 'medecin')->where('structure_id', $structureId)->count(),
+            'patients_total' => User::where('role', 'patient')->where('structure_id', $structureId)->count(),
+            'utilisateurs_actifs' => User::where('structure_id', $structureId)->where('actif', true)->count(),
+            'utilisateurs_inactifs' => User::where('structure_id', $structureId)->where('actif', false)->count(),
+
+            'prescriptions_total' => Prescription::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->count(),
+
+            'consultations_total' => Consultation::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->count(),
+
+            'rdv_total' => Rdv::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->count(),
+
+            'rdv_planifies' => Rdv::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->where('statut', 'planifie')->count(),
+
+            'rdv_termines' => Rdv::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->where('statut', 'termine')->count(),
+
+            'rdv_annules' => Rdv::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->where('statut', 'annule')->count(),
+
+            'prescriptions_mois' => Prescription::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->whereMonth('created_at', now()->month)->count(),
+
+            'consultations_mois' => Consultation::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->whereMonth('created_at', now()->month)->count(),
+
+            'rdv_mois' => Rdv::whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })->whereMonth('created_at', now()->month)->count(),
+        ];
+
+        // Dernières activités
+        $prescriptions_recentes = Prescription::with(['medecin', 'patient'])
+            ->whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
+        $consultations_recentes = Consultation::with(['medecin', 'patient'])
+            ->whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })
+            ->orderBy('date_consultation', 'desc')
+            ->take(5)
+            ->get();
+
+        $rdv_prochains = Rdv::with(['medecin', 'patient'])
+            ->whereHas('medecin', function($query) use ($structureId) {
+                $query->where('structure_id', $structureId);
+            })
+            ->where('statut', 'planifie')
+            ->where('date_rdv', '>=', now())
+            ->orderBy('date_rdv')
+            ->take(5)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'stats' => $stats,
+                'prescriptions_recentes' => $prescriptions_recentes,
+                'consultations_recentes' => $consultations_recentes,
+                'rdv_prochains' => $rdv_prochains,
+                'structure' => Structure::find($structureId)
+            ],
+            'message' => 'Tableau de bord complet récupéré avec succès'
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Erreur dashboardComplet: ' . $e->getMessage());
+        Log::error($e->getTraceAsString());
+
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur interne',
+            'message' => $e->getMessage()
+        ], 500);
     }
 
+    // 🔒 Fallback de sécurité (au cas où aucune branche ne retourne)
+    return response()->json([
+        'success' => false,
+        'error' => 'Réponse non définie',
+        'message' => 'Aucune réponse n’a été générée'
+    ], 500);
+}
     /**
      * Dashboard simplifié (alias pour compatibilité)
      */

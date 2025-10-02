@@ -228,7 +228,8 @@ Route::middleware(['super_admin'])->group(function () {
 
 
 // Routes patient
-Route::prefix('patient')->group(function () {
+
+    Route::middleware(['auth:sanctum'])->prefix('patient')->group(function (){
     // Dashboard
     Route::get('/dashboard', [PatientController::class, 'dashboard']);
     
@@ -254,4 +255,4 @@ Route::prefix('patient')->group(function () {
     // Informations médicales
     Route::get('/informations-medicales', [PatientController::class, 'mesInformationsMedicales']);
     Route::put('/informations-medicales', [PatientController::class, 'mettreAJourInformationsMedicales']);
-});
+    });
