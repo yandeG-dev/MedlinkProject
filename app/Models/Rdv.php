@@ -9,6 +9,7 @@ class RendezVous extends Model
 {
     use HasFactory;
 
+
     protected $table = 'rendez_vous';
 
     protected $fillable = [
@@ -40,3 +41,4 @@ class RendezVous extends Model
     //     return $this->belongsTo(User::class, 'medecin_id');
     // }
 }
+
