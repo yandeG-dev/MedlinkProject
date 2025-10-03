@@ -276,4 +276,4 @@ Route::middleware(['super_admin'])->group(function () {
     Route::get('/informations-medicales', [PatientController::class, 'mesInformationsMedicales']);
     Route::put('/informations-medicales', [PatientController::class, 'mettreAJourInformationsMedicales']);
     });
->>>>>>> 83d0591d81058203086873b13e0f20c60b844864
+
