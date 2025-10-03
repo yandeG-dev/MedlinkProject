@@ -27,7 +27,7 @@ class PatientController extends Controller
             'allergies' => 'nullable|string',
             'adresse' => 'nullable|string',
             'antecedants' => 'nullable|string',
-            'role' => 'nullable|string',
+            // 'role' => 'nullable|string',
             'age' => 'nullable|int',
         ]);
 
