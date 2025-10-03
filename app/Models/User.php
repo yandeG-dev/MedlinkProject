@@ -47,24 +47,7 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-<<<<<<< HEAD
-   protected $fillable = [
-    'nom',
-    'prenom',
-    'email',
-    'password',
-    'role',
-    'telephone',
-    'groupe_sanguin',
-    'allergies',
-    'antecedants',
-    'adresse',
-    'specialite',
-    'age',
-   
-];
 
-=======
     protected $fillable = [
         'nom',
         'prenom',
@@ -81,7 +64,7 @@ class User extends Authenticatable
         'antecedants',
         'groupe_sanguin',
     ];
->>>>>>> 83d0591d81058203086873b13e0f20c60b844864
+
 
     /**
      * The attributes that should be hidden for serialization.
@@ -371,12 +354,12 @@ class User extends Authenticatable
             'utilisateurs_total' => $this->utilisateursCrees()->count(),
         ];
     }
-<<<<<<< HEAD
 
-    public function rendezVous()
-{
-    return $this->hasMany(RendezVous::class, 'patient_id');
-}
+
+//     public function rendezVous()
+// {
+//     return $this->hasMany(RendezVous::class, 'patient_id');
+// }
 
 // public function prescriptions()
 // {
@@ -384,6 +367,4 @@ class User extends Authenticatable
 // }
    
 }
-=======
-}
->>>>>>> 83d0591d81058203086873b13e0f20c60b844864
+
