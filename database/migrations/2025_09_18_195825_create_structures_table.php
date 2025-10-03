@@ -18,6 +18,11 @@ return new class extends Migration
             $table->string('telephone', 20)->nullable();
             $table->string('email', 100)->nullable();
             $table->boolean('actif')->default(true);
+
+            $table->foreignId('createur_id')->nullable()->constrained('users');
+            $table->foreignId('structure_id')->nullable()->constrained('structures');
+             $table->string('type')->nullable();
+
             $table->timestamps();
         });
     }
