@@ -13,10 +13,8 @@ use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\MedecinController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PatientController; // Ajouter cette ligne
-
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+
 
 
 //routes des patients
