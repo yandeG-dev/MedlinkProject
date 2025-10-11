@@ -2,9 +2,15 @@
 
 namespace App\Http\Controllers;
 
-<<<<<<< HEAD
+
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Prescription;
+use App\Models\Rdv;
+use App\Models\Consultation;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Response;
 
 class PatientController extends Controller
 {
@@ -73,21 +79,7 @@ public function showDossier($id)
     return response()->json($patient);
 }
 
-    
-}
-=======
-use App\Models\Prescription;
-use App\Models\Rdv;
-use App\Models\Consultation;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Response;
-
-class PatientController extends Controller
-{
-  
-    // DASHBOARD ET STATISTIQUES
+     // DASHBOARD ET STATISTIQUES
     // =============================================
 
     /**
@@ -409,7 +401,7 @@ class PatientController extends Controller
 
 
     // INFORMATIONS PERSONNELLES ET MÉDICALES
-    // =============================================
+  
 
     /**
      * Obtenir les informations médicales du patient
@@ -495,4 +487,6 @@ class PatientController extends Controller
         ]);
     }
 }
->>>>>>> 83d0591d81058203086873b13e0f20c60b844864
+
+
+
