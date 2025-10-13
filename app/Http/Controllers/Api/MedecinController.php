@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 use Carbon\Carbon;
 
 class MedecinController extends Controller
@@ -113,30 +115,48 @@ class MedecinController extends Controller
         }
     }
 
-    /**
-     * Afficher la liste des patients (utilisateurs avec rôle patient) pour la création de rendez-vous
-     */
-    public function listPatient(): JsonResponse
-    {
-        if (!auth()->check() || !auth()->user()->isMedecin()) {
-            return response()->json(['error' => 'Accès non autorisé'], 403);
-        }
-
-        try {
-            // Récupérer les utilisateurs avec le rôle "patient"
-            $patients = User::where('role', 'patient')
-                           ->orderBy('nom') // ou 'nom' selon votre structure
-                           ->get(['id', 'nom','prenom', 'email', 'telephone', 'age','groupe_sanguin','antecedants','allergies']);
-
-            return response()->json(['patients' => $patients]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Erreur lors de la récupération des patients',
-                'message' => $e->getMessage()
-            ], 500);
-        }
+   public function listPatient(): JsonResponse
+{
+    if (!auth()->check() || !auth()->user()->isMedecin()) {
+        return response()->json(['error' => 'Accès non autorisé'], 403);
     }
+
+    try {
+        $medecin = auth()->user();
+        $structureId = $medecin->structure_id;
+
+        // 1. Récupérer tous les assistants de la même structure
+        $assistantIds = User::where('role', 'assistant')
+                            ->where('structure_id', $structureId)
+                            ->pluck('id');
+
+        // 2. Récupérer les patients :
+        // - créés par ces assistants
+        // - OU ayant eux-mêmes structure_id = $structureId
+        $patients = User::where('role', 'patient')
+                        ->where(function ($query) use ($assistantIds, $structureId) {
+                            $query->whereIn('createur_id', $assistantIds)
+                                  ->orWhere('structure_id', $structureId);
+                        })
+                        ->orderBy('nom')
+                        ->orderBy('prenom')
+                        ->get([
+                            'id', 'nom', 'prenom', 'email', 'telephone',
+                            'age', 'groupe_sanguin', 'antecedants', 'allergies', 'createur_id'
+                        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $patients
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Erreur lors de la récupération des patients',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
 
     /**
      * Lister les consultations du médecin
@@ -206,6 +226,7 @@ class MedecinController extends Controller
             $consultation = Consultation::create([
                 'medecin_id' => auth()->id(),
                 'patient_id' => $request->patient_id,
+                'structure_id' => auth()->user()->structure_id,
                 'date_consultation' => $request->date_consultation,
                 'motif' => $request->motif,
                 'diagnostic' => $request->diagnostic,
@@ -319,6 +340,95 @@ class MedecinController extends Controller
         }
     }
 
+//Creation prescription
+
+  /**
+ * Créer une nouvelle prescription
+ */
+public function storePrescriptions(Request $request): JsonResponse
+{
+    // 🔐 Vérification de l'authentification et du rôle
+    if (!auth()->check() || !auth()->user()->isMedecin()) {
+        Log::warning('[Prescription] Accès non autorisé', ['user_id' => auth()->id()]);
+        return response()->json(['error' => 'Accès non autorisé'], 403);
+    }
+
+    try {
+        // ✅ Validation des données
+        $validated = $request->validate([
+            'contenu' => 'required|string',
+            'patient_id' => 'required|exists:users,id',
+            'statut' => 'in:active,expirée,annulée'
+        ]);
+
+         $prescriptions = Prescription::with([
+            'patient:id,nom,prenom,email',
+            'medecin:id,nom,prenom,email,specialite', // ← IMPORTANT
+            'structure:id,nom'
+         ]);
+
+        // 🧠 Création de la prescription
+        $prescription = Prescription::create([
+            'contenu' => $validated['contenu'],
+            'patient_id' => $validated['patient_id'],
+            'medecin_id' => auth()->id(),
+            'structure_id' => auth()->user()->structure_id,
+            'statut' => $validated['statut'] ?? 'active',
+        ]);
+
+        // 🔍 Chargement des relations pour retour enrichi
+        $prescription->load(['patient', 'medecin.structure']);
+
+      Log::info('[Debug] Données reçues pour création', [
+  'contenu' => $request->contenu,
+  'patient_id' => $request->patient_id,
+  'medecin_id' => auth()->id(),
+  'structure_id' => auth()->user()?->structure_id,
+  'statut' => $request->statut
+]);
+
+        return response()->json([
+    'success' => true,
+    'message' => 'Prescription créée avec succès',
+    'data' => [
+        'id' => $prescription->id,
+        'contenu' => $prescription->contenu,
+        'statut' => $prescription->statut,
+        'date_prescription' => $prescription->created_at->format('Y-m-d'),
+        'patient' => [
+            'id' => $prescription->patient->id,
+            'nom' => $prescription->patient->nom,
+            'prenom' => $prescription->patient->prenom,
+        ],
+        'medecin' => [
+            'id' => $prescription->medecin->id,
+            'nom' => $prescription->medecin->nom ?? $prescription->medecin->name,
+            'prenom' => $prescription->medecin->prenom ?? null,
+            'structure' => [
+                'id' => $prescription->medecin->structure->id ?? null,
+                'nom' => $prescription->medecin->structure->nom ?? 'Cabinet Médical'
+            ]
+        ]
+    ]
+], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        Log::error('[Prescription] Erreur de validation', ['errors' => $e->errors()]);
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur de validation',
+            'errors' => $e->errors()
+        ], 422);
+
+    } catch (\Exception $e) {
+        Log::error('[Prescription] Erreur serveur', ['exception' => $e->getMessage()]);
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur lors de la création de la prescription',
+            'details' => $e->getMessage()
+        ], 500);
+    }
+}
     /**
      * Lister les prescriptions du médecin
      */
@@ -347,6 +457,84 @@ class MedecinController extends Controller
             ], 500);
         }
     }
+
+
+      public function getPrescription($id): JsonResponse
+    {
+        try {
+            // Vérifier que l'utilisateur est un médecin
+            if (!auth()->check() || !auth()->user()->isMedecin()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Accès non autorisé'
+                ], 403);
+            }
+
+            $medecin = auth()->user();
+
+            // Récupérer la prescription avec toutes les relations
+            $prescription = Prescription::with([
+                'patient:id,nom,prenom,email',
+                'medecin:id,nom,prenom,email',
+                'structure:id,nom'
+            ])
+            ->where('id', $id)
+            ->where('medecin_id', $medecin->id) // Sécurité : vérifier le propriétaire
+            ->first();
+
+            if (!$prescription) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Prescription non trouvée'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $prescription
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[Prescription] Erreur chargement', [
+                'id' => $id, 
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors du chargement de la prescription'
+            ], 500);
+        }
+    }
+
+    public function updatePrescription(Request $request, $id)
+{
+    try {
+        $validated = $request->validate([
+            'contenu' => 'required|string',
+            'patient_id' => 'required|exists:users,id',
+            'medicaments' => 'sometimes|string',
+            'posologie' => 'sometimes|string', 
+            'duree' => 'sometimes|string',
+            'instructions' => 'sometimes|string',
+            'statut' => 'in:active,expirée,annulée'
+        ]);
+
+        $prescription = Prescription::findOrFail($id);
+        $prescription->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Prescription modifiée avec succès',
+            'data' => $prescription
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur lors de la modification'
+        ], 500);
+    }
+}
 
     /**
      * Récupérer les statistiques du dashboard avec gestion d'erreurs
@@ -427,6 +615,40 @@ class MedecinController extends Controller
             return [];
         }
     }
+
+
+
+    /**
+ * Lister les rendez-vous du médecin
+ */
+public function listRendezVous(): JsonResponse
+{
+    if (!auth()->check() || !auth()->user()->isMedecin()) {
+        return response()->json(['error' => 'Accès non autorisé'], 403);
+    }
+
+    try {
+        $rendezVous = Rdv::with(['patient' => function($query) {
+                $query->select('id', 'nom', 'prenom', 'telephone');
+            }])
+            ->where('medecin_id', auth()->id())
+            ->where('structure_id', auth()->user()->structure_id)
+            ->orderBy('date_rdv', 'desc')
+            ->paginate(10);
+
+        return response()->json([
+            'success' => true,
+            'data' => $rendezVous
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur lors de la récupération des rendez-vous',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
 
     /**
      * Récupérer les consultations récentes

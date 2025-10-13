@@ -125,7 +125,7 @@ class SuperAdminController extends Controller
     /**
      * Créer une structure complète avec son admin
      */
-  public function storeStructureComplete(Request $request): JsonResponse
+  public function storeStructures(Request $request): JsonResponse
 {
     if (!auth()->check() || auth()->user()->role !== 'super_admin') {
         return response()->json(['error' => 'Accès non autorisé'], 403);
@@ -195,6 +195,34 @@ class SuperAdminController extends Controller
             'line' => $e->getLine()
         ], 500);
     }
+}
+
+
+public function updateStructure(Request $request, Structure $structure): JsonResponse
+{
+    $request->validate([
+        'nom' => 'required|string|max:255',
+        'adresse' => 'nullable|string|max:255',
+        'email' => 'required|email|unique:structures,email,' . $structure->id,
+        'telephone' => 'nullable|string|max:20',
+        'type' => 'nullable|string|max:50',
+        'actif' => 'nullable|boolean',
+    ]);
+
+    $structure->update([
+        'nom' => $request->nom,
+        'adresse' => $request->adresse,
+        'email' => $request->email,
+        'telephone' => $request->telephone,
+        'type' => $request->type,
+        'actif' => $request->actif,
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Structure mise à jour avec succès',
+        'data' => $structure
+    ]);
 }
 
     /**

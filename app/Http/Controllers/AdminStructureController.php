@@ -12,6 +12,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
+
+
 
 class AdminStructureController extends Controller
 {
@@ -166,7 +170,7 @@ class AdminStructureController extends Controller
     return response()->json([
         'success' => false,
         'error' => 'Réponse non définie',
-        'message' => 'Aucune réponse n’a été générée'
+        'message' => 'Aucune réponse n\'a été générée'
     ], 500);
 }
     /**
@@ -210,80 +214,123 @@ class AdminStructureController extends Controller
     /**
      * Créer une nouvelle structure
      */
-    public function storeStructure(Request $request): JsonResponse
-    {
-        try {
-            if (!auth()->check() || !auth()->user()->isAdminStructure()) {
-                return response()->json(['error' => 'Accès non autorisé'], 403);
-            }
+    // public function storeStructure(Request $request): JsonResponse
+    // {
+    //     try {
+    //         if (!auth()->check() || !auth()->user()->isAdminStructure()) {
+    //             return response()->json(['error' => 'Accès non autorisé'], 403);
+    //         }
 
-            $request->validate([
-                'nom' => 'required|string|max:100',
-                'adresse' => 'required|string|max:255',
-                'telephone' => 'required|string|max:20',
-                'email' => 'required|email|unique:structures,email',
-                'type' => 'required|string|max:100',
-            ]);
+    //         $request->validate([
+    //             'nom' => 'required|string|max:100',
+    //             'adresse' => 'required|string|max:255',
+    //             'telephone' => 'required|string|max:20',
+    //             'email' => 'required|email|unique:structures,email',
+    //             'type' => 'required|string|max:100',
+    //         ]);
 
-            $structure = Structure::create([
-                'nom' => $request->nom,
-                'adresse' => $request->adresse,
-                'telephone' => $request->telephone,
-                'email' => $request->email,
-                'type' => $request->type,
-                'actif' => true,
-            ]);
+    //         $structure = Structure::create([
+    //             'nom' => $request->nom,
+    //             'adresse' => $request->adresse,
+    //             'telephone' => $request->telephone,
+    //             'email' => $request->email,
+    //             'type' => $request->type,
+    //             'actif' => true,
+    //         ]);
 
-            // Mettre à jour l'utilisateur avec la structure_id
-            auth()->user()->update(['structure_id' => $structure->id]);
+    //         // Mettre à jour l'utilisateur avec la structure_id
+    //         auth()->user()->update(['structure_id' => $structure->id]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Structure créée avec succès',
-                'data' => $structure
-            ], 201);
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Structure créée avec succès',
+    //             'data' => $structure
+    //         ], 201);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la création de la structure',
-                'message' => $e->getMessage()
-            ], 500);
-        }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'error' => 'Erreur lors de la création de la structure',
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+
+
+
+
+// app/Http/Controllers/UserController.php
+public function update(Request $request, $id)
+{
+    $user = User::find($id);
+    
+    if (!$user) {
+        return response()->json([
+            'message' => 'Utilisateur non trouvé'
+        ], 404);
     }
+
+    // Validation des données
+    $validated = $request->validate([
+        'nom' => 'sometimes|required|string|max:50',
+        'prenom' => 'sometimes|required|string|max:50',
+        'email' => 'sometimes|required|email|unique:users,email,' . $id,
+        'telephone' => 'nullable|string|max:20',
+        'adresse' => 'nullable|string|max:255',
+        'specialite' => 'nullable|string|max:100',
+        'age' => 'nullable|integer|min:0|max:120',
+        'groupe_sanguin' => 'nullable|string|max:3',
+        'antecedants' => 'nullable|string',
+        'allergies' => 'nullable|string'
+    ]);
+
+    // Mise à jour de l'utilisateur
+    $user->update($validated);
+
+    return response()->json([
+        'message' => 'Utilisateur modifié avec succès',
+        'data' => [
+            'utilisateur' => $user
+        ]
+    ]);
+}
+
+
 
     /**
      * Afficher les détails de la structure de l'admin
      */
-    public function showStructure(): JsonResponse
-    {
-        try {
-            if (!auth()->check() || !auth()->user()->isAdminStructure()) {
-                return response()->json(['error' => 'Accès non autorisé'], 403);
-            }
+    
+   public function showStructure(): JsonResponse
+{
+    try {
+        if (!auth()->check() || !auth()->user()->isAdminStructure()) {
+            return response()->json(['error' => 'Accès non autorisé'], 403);
+        }
 
-              $structure = Structure::find($user->structure_id);
+        $user = auth()->user(); // ✅ Correction ici
+        $structure = Structure::find($user->structure_id);
 
-            if (!$structure) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Structure non trouvée'
-                ], 404);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $structure
-            ]);
-
-        } catch (\Exception $e) {
+        if (!$structure) {
             return response()->json([
                 'success' => false,
-                'error' => 'Erreur lors de la récupération de la structure'
-            ], 500);
+                'error' => 'Structure non trouvée'
+            ], 404);
         }
-    }
 
+        return response()->json([
+            'success' => true,
+            'data' => $structure
+        ]);
+    } catch (\Exception $e) {
+        Log::error('[Structure] Erreur showStructure: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur lors de la récupération de la structure'
+        ], 500);
+    }
+}
     /**
      * Mettre à jour la structure
      */
@@ -387,72 +434,104 @@ class AdminStructureController extends Controller
     }
 
     /**
-     * Ajouter un nouvel utilisateur (tout rôle)
+     * Ajouter un nouvel utilisateur (tout rôle) - FUSIONNÉ avec storeAssistant
      */
-    public function storeUtilisateur(Request $request): JsonResponse
-    {
-        try {
-            if (!auth()->check() || !auth()->user()->isAdminStructure()) {
-                return response()->json(['error' => 'Accès non autorisé'], 403);
-            }
-
-            $structureId = auth()->user()->structure_id;
-            
-            if (!$structureId) {
-                return response()->json(['error' => 'Aucune structure associée'], 400);
-            }
-
-            $request->validate([
-                'nom' => 'required|string|max:50',
-                'prenom' => 'required|string|max:50',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required|confirmed|min:8',
-                'role' => 'required|in:assistant,medecin,patient',
-                'telephone' => 'nullable|string|max:20',
-                'specialite' => 'required_if:role,medecin|string|max:100',
-                'age' => 'required_if:role,patient|integer|min:0',
-                'adresse' => 'nullable|string|max:255',
-            ]);
-
-            $userData = [
-                'nom' => $request->nom,
-                'prenom' => $request->prenom,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'actif' => true,
-                'createur_id' => auth()->id(),
-                'structure_id' => $structureId,
-                'telephone' => $request->telephone,
-                'adresse' => $request->adresse,
-            ];
-
-            // Champs spécifiques par rôle
-            if ($request->role === 'medecin') {
-                $userData['specialite'] = $request->specialite;
-            }
-
-            if ($request->role === 'patient') {
-                $userData['age'] = $request->age;
-            }
-
-            $utilisateur = User::create($userData);
-
-            return response()->json([
-                'success' => true,
-                'message' => ucfirst($request->role) . ' créé avec succès',
-                'data' => $utilisateur
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la création de l\'utilisateur',
-                'message' => $e->getMessage()
-            ], 500);
+   /**
+ * Ajouter un nouvel utilisateur (tout rôle)
+ */
+public function storeUtilisateur(Request $request): JsonResponse
+{
+    try {
+        if (!auth()->check() || !auth()->user()->isAdminStructure()) {
+            return response()->json(['error' => 'Accès non autorisé'], 403);
         }
-    }
 
+        $structureId = auth()->user()->structure_id;
+        
+        if (!$structureId) {
+            return response()->json(['error' => 'Aucune structure associée'], 400);
+        }
+
+        // Validation de base pour tous les utilisateurs
+        $request->validate([
+            'nom' => 'required|string|max:50',
+            'prenom' => 'required|string|max:50',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|confirmed|min:8',
+            'role' => 'required|in:assistant,medecin,patient',
+            'telephone' => 'nullable|string|max:20',
+            'adresse' => 'nullable|string|max:255',
+        ]);
+
+        // Validation conditionnelle par rôle
+        if ($request->role === 'medecin') {
+            $request->validate([
+                'specialite' => 'required|string|max:100',
+            ]);
+        }
+
+        if ($request->role === 'patient') {
+            $request->validate([
+                'age' => 'required|integer|min:0|max:120',
+                'groupe_sanguin' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
+                'antecedants' => 'nullable|string',
+                'allergies' => 'nullable|string|max:200',
+            ]);
+        }
+
+        $userData = [
+            'nom' => $request->nom,
+            'prenom' => $request->prenom,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'actif' => true,
+            'createur_id' => auth()->id(),
+            'structure_id' => $structureId,
+            'telephone' => $request->telephone ?? null,
+            'adresse' => $request->adresse ?? null,
+        ];
+
+        // Champs spécifiques par rôle
+        if ($request->role === 'medecin') {
+            $userData['specialite'] = $request->specialite;
+        }
+
+        if ($request->role === 'patient') {
+            $userData['age'] = $request->age;
+            $userData['antecedants'] = $request->antecedants ?? null;
+            $userData['allergies'] = $request->allergies ?? null;
+            $userData['groupe_sanguin'] = $request->groupe_sanguin ?? null;
+            
+            // Note: assistant_id n'est plus requis pour la création de base
+            // Il pourra être assigné plus tard
+        }
+
+        $utilisateur = User::create($userData);
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($request->role) . ' créé avec succès',
+            'data' => $utilisateur
+        ], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur de validation',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Erreur création utilisateur: ' . $e->getMessage());
+        Log::error($e->getTraceAsString());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur lors de la création de l\'utilisateur',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
     /**
      * Voir les détails complets d'un utilisateur
      */
@@ -616,76 +695,6 @@ class AdminStructureController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur lors de la récupération des assistants'
-            ], 500);
-        }
-    }
-
-    /**
-     * Créer un nouveau patient
-     */
-    public function storePatient(Request $request): JsonResponse
-    {
-        try {
-            if (!auth()->check() || !auth()->user()->isAdminStructure()) {
-                return response()->json(['error' => 'Accès non autorisé'], 403);
-            }
-
-            $structureId = auth()->user()->structure_id;
-            
-            if (!$structureId) {
-                return response()->json(['error' => 'Aucune structure associée'], 400);
-            }
-
-            $request->validate([
-                'nom' => 'required|string|max:50',
-                'prenom' => 'required|string|max:50',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required|confirmed|min:8',
-                'age' => 'required|integer|min:0|max:150',
-                'adresse' => 'required|string|max:255',
-                'telephone' => 'required|string|max:20',
-                'assistant_id' => 'required|exists:users,id',
-                'antecedants' => 'nullable|string',
-                'allergies' => 'nullable|string|max:200',
-                'groupe_sanguin' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
-            ]);
-
-            // Vérifier que l'assistant appartient bien à cet admin
-            $assistant = User::find($request->assistant_id);
-            if (!$assistant || $assistant->createur_id !== auth()->id() || $assistant->role !== 'assistant') {
-                return response()->json(['error' => 'Assistant invalide'], 400);
-            }
-
-            $userData = [
-                'nom' => $request->nom,
-                'prenom' => $request->prenom,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => 'patient',
-                'age' => $request->age,
-                'adresse' => $request->adresse,
-                'telephone' => $request->telephone,
-                'actif' => true,
-                'createur_id' => $request->assistant_id,
-                'structure_id' => $structureId,
-                'antecedants' => $request->antecedants ?? '',
-                'allergies' => $request->allergies ?? '',
-                'groupe_sanguin' => $request->groupe_sanguin ?? '',
-            ];
-
-            $patient = User::create($userData);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Patient créé avec succès et assigné à l\'assistant',
-                'data' => $patient
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la création du patient',
-                'message' => $e->getMessage()
             ], 500);
         }
     }

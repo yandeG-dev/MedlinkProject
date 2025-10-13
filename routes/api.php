@@ -11,6 +11,7 @@ use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PatientController; // Ajouter cette ligne
 
+use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+
+
 
 // Test route pour vérifier que l'API fonctionne
 Route::get('/test', function () {
@@ -71,8 +75,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard-complet', [SuperAdminController::class, 'dashboardComplet']);
         
         // Gestion des structures
+    Route::put('/structures/{structure}', [SuperAdminController::class, 'updateStructure']);
         Route::get('/structures', [SuperAdminController::class, 'listStructures']);
-        Route::post('/structures-complete', [SuperAdminController::class, 'storeStructureComplete']);
+        Route::post('/structures', [SuperAdminController::class, 'storeStructures']);
         Route::get('/structures/{structure}', [SuperAdminController::class, 'showStructure']);
         Route::put('/structures/{structure}/toggle', [SuperAdminController::class, 'toggleStructure']);
         
@@ -112,7 +117,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // =============================================
         // GESTION DES UTILISATEURS (ROUTES FUSIONNÉES)
         // =============================================
-        
+        // routes/api.php
+       Route::patch('/utilisateurs/{id}', [UserController::class, 'update']);
+
+ 
         // Route universelle pour lister tous les utilisateurs (avec filtres)
         Route::get('/utilisateurs', [AdminStructureController::class, 'listUtilisateursStructure']);
         
@@ -124,8 +132,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         
         // Route universelle pour activer/désactiver un utilisateur
         Route::put('/utilisateurs/{utilisateur}/toggle', [AdminStructureController::class, 'toggleUtilisateur']);
-        
-        // =============================================
+      // =============================================
         // GESTION DES PATIENTS (ROUTES SPÉCIFIQUES)
         // =============================================
         Route::get('/patients', [AdminStructureController::class, 'listPatients']);
@@ -147,6 +154,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // UTILITAIRES
         // =============================================
         Route::get('/assistants-for-assignment', [AdminStructureController::class, 'getAssistantsForAssignment']);
+        Route::post('/assistants', [AdminStructureController::class, 'storeAssistant']);
     });
 
         // ROUTES STRUCTURES (pour tous les utilisateurs autorisés)
@@ -178,42 +186,52 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/medecin/rendez-vous', [MedecinController::class, 'storeRendezVous']);
     Route::put('/medecin/rendez-vous/{rendezVous}/cancel', [MedecinController::class, 'cancelRendezVous']);
     Route::put('/medecin/rendez-vous/{rendezVous}/complete', [MedecinController::class, 'completeRendezVous']); 
+        Route::put('/rendez-vous/{rendezVous}/annuler', [MedecinController::class, 'annulerRendezVous']);
     // Dashboard et agenda
     // Route::get('/medecin/dashboard', [MedecinController::class, 'dashboard']);
     Route::get('/medecin/agenda', [MedecinController::class, 'agenda']);
       Route::get('/medecin/dashboard', [MedecinController::class, 'dashboard']);
     Route::get('/medecin/dashboard/charts', [MedecinController::class, 'dashboardCharts']);
-      Route::get('/prescriptions', [MedecinController::class, 'listPrescriptions']);
-    Route::get('/consultations', [MedecinController::class, 'listConsultations']);
-    Route::put('/consultations/{consultation}', [MedecinController::class, 'updateConsultation']);
-    Route::put('/rendez-vous/{rendezVous}/annuler', [MedecinController::class, 'annulerRendezVous']);
+    // routes/api.php
+
+    // Route pour LIRE une prescription spécifique (GET)
+Route::get('/prescriptions/{id}', [MedecinController::class, 'getPrescription']);
+
+// Route pour MODIFIER une prescription (PUT) - Vous l'avez déjà
+Route::put('/prescriptions/{id}', [MedecinController::class, 'updatePrescription']);
+     Route::post('/prescriptions', [MedecinController::class, 'storePrescriptions']);
+      Route::get('medecin/prescriptions', [MedecinController::class, 'listPrescriptions']);
+    Route::get('medecin/consultations', [MedecinController::class, 'listConsultations']);
+    Route::put('/medecin/consultations/{consultation}', [MedecinController::class, 'updateConsultation']);
+
     
 
 });
 
-Route::middleware(['auth:sanctum'])->group(function () {
-        // Dashboard
-    Route::get('/assistant/dashboard', [AssistantController::class, 'dashboard']);
+Route::middleware(['auth:sanctum'])->prefix('assistant')->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [AssistantController::class, 'dashboard']);
+    
     // Patients
-    Route::get('/assistant/patients', [AssistantController::class, 'listPatients']);
-    Route::post('/assistant/patients', [AssistantController::class, 'storePatient']);
-    Route::get('/assistant/patients/{patient}', [AssistantController::class, 'showPatient']);
-    Route::put('/assistant/patients/{patient}', [AssistantController::class, 'updatePatient']);
-    Route::delete('/assistant/patients/{patient}', [AssistantController::class, 'destroyPatient']);
+    Route::get('/patients', [AssistantController::class, 'listPatients']);
+    Route::post('/patients', [AssistantController::class, 'storePatient']);
+    Route::get('/patients/{patient}', [AssistantController::class, 'showPatientDetails']);
+    Route::put('/patients/{patient}', [AssistantController::class, 'updatePatient']);
+     Route::patch('/patients/{patient}/toggle-status', [AssistantController::class, 'togglePatientStatus']);
     
     // Médecins
-    Route::get('/assistant/medecins', [AssistantController::class, 'listMedecins']);
-    Route::post('/assistant/medecins', [AssistantController::class, 'storeMedecin']);
-    Route::get('/assistant/medecins/{medecin}', [AssistantController::class, 'showMedecin']);
-    Route::put('/assistant/medecins/{medecin}', [AssistantController::class, 'updateMedecin']);
-    Route::delete('/assistant/medecins/{medecin}', [AssistantController::class, 'destroyMedecin']);
-
-    Route::get('/prescriptions-structure', [AssistantController::class, 'listPrescriptionsStructure']);
-    Route::get('/consultations-structure', [AssistantController::class, 'listConsultationsStructure']);
+    Route::get('/medecins', [AssistantController::class, 'listMedecins']);
+    Route::post('/medecins', [AssistantController::class, 'storeMedecin']);
+    Route::get('/medecins/{medecin}', [AssistantController::class, 'showMedecin']);
+    
+    // Prescriptions, consultations, rendez-vous
+    Route::get('/prescriptions', [AssistantController::class, 'listPrescriptionsStructure']);
+    Route::get('/consultations', [AssistantController::class, 'listConsultationsStructure']);
     Route::get('/rendez-vous-structure', [AssistantController::class, 'listRendezVousStructure']);
     Route::put('/rendez-vous/{rendezVous}/gerer', [AssistantController::class, 'gererRendezVous']);
-    
-
+    Route::post('/rendez-vous', [AssistantController::class, 'storeRendezVous']);
+    Route::put('/rendez-vous/{rendezVous}', [AssistantController::class, 'updateRendezVous']);
+    Route::get('/rendez-vous/{rendezVous}', [AssistantController::class, 'showRendezVous']);
 });
 
 // Gestion des utilisateurs
@@ -236,7 +254,7 @@ Route::middleware(['super_admin'])->group(function () {
     // Prescriptions
     Route::get('/prescriptions', [PatientController::class, 'mesPrescriptions']);
     Route::get('/prescriptions/{prescription}', [PatientController::class, 'voirPrescription']);
-    Route::get('/prescriptions/{prescription}/telecharger', [PatientController::class, 'telechargerPrescription']);
+   Route::get('/prescriptions/{id}/download', [PatientController::class, 'downloadPrescription']);
     Route::get('/prescriptions/rechercher', [PatientController::class, 'rechercherPrescriptions']);
     
     // Rendez-vous

@@ -3,7 +3,7 @@
 namespace App\Models;
 
 
-
+// use App\Notifications\MotDePasseOulie;
 use App\Models\Structure;
 use App\Models\Prescription;
 use App\Models\Consultation;
@@ -34,6 +34,11 @@ class User extends Authenticatable
         'patient',
         'infirmier'
     ];
+
+
+//   public function sendPasswordResetNotification($token) {
+//     $this->notify(new MotDePasseOulie($token));
+// }
 
     /**
      * Groupes sanguins disponibles
@@ -73,6 +78,8 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    
 
     /**
      * The attributes that should be cast.
@@ -245,7 +252,7 @@ class User extends Authenticatable
      */
     public function rendezvous(): HasMany
     {
-        return $this->hasMany(Rdv::class, 'user_id');
+        return $this->hasMany(Rdv::class, 'patient_id');
     }
 
     /**

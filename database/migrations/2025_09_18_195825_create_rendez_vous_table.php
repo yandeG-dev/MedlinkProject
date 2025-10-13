@@ -12,15 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('rendez_vous', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->enum('statut', ['planifie', 'annule', 'termine']);
-            $table->unsignedBigInteger('patient_id');
+        
+              $table->id();
+    $table->foreignId('patient_id')->constrained('users');
+    $table->foreignId('medecin_id')->constrained('users');
+    $table->foreignId('assistant_id')->constrained('users'); 
+    $table->foreignId('structure_id')->constrained('structures');
+    $table->dateTime('date_rdv');
+    $table->string('motif')->nullable();
+    $table->text('notes')->nullable();
+    $table->enum('statut', ['planifie', 'annule', 'termine'])->default('planifie');
+    $table->timestamps();
 
-            $table->unsignedBigInteger('medecin_id');
-
-            $table->unsignedBigInteger('assistant_id');
-            $table->unsignedBigInteger('structure_id');
-            $table->timestamps();
         });
     }
 

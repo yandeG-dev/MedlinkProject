@@ -109,28 +109,67 @@ class PatientController extends Controller
     /**
      * Télécharger une prescription en PDF (retourne base64 ou URL)
      */
-    public function telechargerPrescription(Request $request, Prescription $prescription): JsonResponse
-    {
-        $user = $request->user();
-        
-        if (!$user->isPatient() || $prescription->patient_id !== $user->id) {
-            return response()->json(['error' => 'Prescription non trouvée'], 404);
-        }
+   public function downloadPrescription($id): JsonResponse|StreamedResponse
+{
+    try {
+        $user = request()->user();
+        $prescription = Prescription::with(['medecin', 'patient'])
+            ->where('id', $id)
+            ->where('patient_id', $user->id)
+            ->firstOrFail();
 
-        // Générer le contenu PDF
-        $pdfContent = $prescription->generatePdf();
-        
-        // Retourner en base64 pour l'API
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'pdf_base64' => base64_encode($pdfContent),
-                'file_name' => "prescription-{$prescription->id}-" . now()->format('Y-m-d') . ".pdf",
-                'prescription' => $prescription->load(['medecin', 'structure'])
-            ]
+        // Option 1: Retourner le contenu comme fichier texte
+        $filename = "prescription-{$prescription->id}.txt";
+        $content = $this->generatePrescriptionContent($prescription);
+
+        return response()->streamDownload(function () use ($content) {
+            echo $content;
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=utf-8',
         ]);
-    }
 
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Prescription non trouvée'
+        ], 404);
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Erreur lors du téléchargement'
+        ], 500);
+    }
+}
+
+private function generatePrescriptionContent(Prescription $prescription): string
+{
+    $date = $prescription->created_at->format('d/m/Y');
+    
+    return "
+PRESCRIPTION MÉDICALE
+=====================
+
+Sunusanté
+
+Patient: {$prescription->patient->prenom} {$prescription->patient->nom}
+Date: {$date}
+
+Médecin prescripteur:
+Dr {$prescription->medecin->prenom} {$prescription->medecin->nom}
+{$prescription->medecin->specialite}
+
+CONTENU DE LA PRESCRIPTION:
+{$prescription->contenu}
+
+Statut: {$prescription->statut}
+ID: {$prescription->id}
+
+Signature:
+__________________
+
+Dr {$prescription->medecin->prenom} {$prescription->medecin->nom}
+    ";
+}
     /**
      * Rechercher/filtrer les prescriptions
      */

@@ -15,13 +15,13 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->text('contenu');
 
-            $table->unsignedBigInteger('medecin_id');
-            $table->unsignedBigInteger('patient_id');
-            $table->unsignedBigInteger('structure_id');
-
             // $table->unsignedBigInteger('medecin_id');
             // $table->unsignedBigInteger('patient_id');
             // $table->unsignedBigInteger('structure_id');
+
+            $table->unsignedBigInteger('medecin_id');
+            $table->unsignedBigInteger('patient_id');
+            $table->unsignedBigInteger('structure_id');
             $table->foreignId('patient_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('medecin_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('structure_id')->constrained('structures')->onDelete('cascade');
